@@ -5,7 +5,7 @@
 # vivado -mode tcl -source red_pitaya_vivado.tcl -tclargs projectname
 ################################################################################
 
-cd prj/$::argv
+cd prj/v0.94_edit
 
 ################################################################################
 # install UltraFast Design Methodology from TCL Store

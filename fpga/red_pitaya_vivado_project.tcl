@@ -5,7 +5,7 @@
 # vivado -mode batch -source red_pitaya_vivado_project.tcl -tclargs projectname
 ################################################################################
 
-cd prj/$::argv
+cd prj/v0.94_edit
 
 ################################################################################
 # define paths
