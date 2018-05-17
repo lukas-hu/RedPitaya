@@ -1,3 +1,9 @@
+/** 
+ * Lukas - 16.05.18 - Modified version of red_pitaya_pid_block.v
+ * Included a Sample&Hold function that is triggered by a TTL signal on input 1. If the input is above a certain threshold, the error signal of the controller is set to 0.
+ * Also included two delays which are implemented through simple counters. Details given below
+ */
+
 /**
  * $Id: red_pitaya_pid_block.v 961 2014-01-21 11:40:39Z matej.oblak $
  *
@@ -46,7 +52,7 @@
 
 
 
-module red_pitaya_pid_block_sh #(          //changed name LUKAS
+module red_pitaya_pid_block_sh_d #(          //changed name -Lukas
    parameter     PSR = 12         ,
    parameter     ISR = 18         ,
    parameter     DSR = 10          
@@ -57,43 +63,67 @@ module red_pitaya_pid_block_sh #(          //changed name LUKAS
    input                 rstn_i          ,  // reset - active low
    input      [ 14-1: 0] dat_i           ,  // input data
    output     [ 14-1: 0] dat_o           ,  // output data
-   input	  [ 14-1: 0] dat_i_sh		 ,  // input sample&hold trigger LUKAS
+   input	  [ 14-1: 0] dat_i_sh		 ,  // input sample&hold trigger -Lukas
 
    // settings
    input      [ 14-1: 0] set_sp_i        ,  // set point
    input      [ 14-1: 0] set_kp_i        ,  // Kp
    input      [ 14-1: 0] set_ki_i        ,  // Ki
    input      [ 14-1: 0] set_kd_i        ,  // Kd
-   input                 int_rst_i          // integrator reset
+   input                 int_rst_i       ,  // integrator reset
+   input      [ 14-1: 0] set_delay1_i    ,  // delay1 -Lukas
+   input      [ 14-1: 0] set_delay2_i       // delay2 -Lukas
 );
 
 
-//set register for sh trigger input LUKAS
+//set register for sh trigger input -Lukas
 //reg  [ 14-1: 0] shtrig		 ;
 //assign shtrig = dat_i_sh     ;
 
 
 //---------------------------------------------------------------------------------
 //  Set point error calculation
+//
+//  Sample&Hold feature including delays (-Lukas):
+//             __________                   _________________
+//  TTL signal:          |_________________|
+//
+//                               ~~~~~~~~~~~~~~~~~~~~
+//  error signal:_______________|                    |__________
+//  
+//  delays:              <--d1->            <---d2-->     
+
 
 reg  [ 15-1: 0] error        ;
-reg  [ 8-1: 0] counter = 8'h0  ;     //counter LUKAS
+reg  [ 14-1: 0] counter_d1 = 14'h0  ;     //counter delay 1 -Lukas
+reg  [ 14-1: 0] counter_d2 = 14'h0  ;     //counter delay 2 -Lukas
 
 always @(posedge clk_i) begin
    if (rstn_i == 1'b0) begin
       error <= 15'h0 ;
    end
-   else if ($signed(dat_i_sh) >= 14'sb00001011101110) begin //check if input threshold is reached or not, give threshold in signed twos complement LUKAS
-	  error <= 15'h0 ;
-	  counter <= 8'h0 ;        //counter should be 0 during hold
+   else if ($signed(dat_i_sh) >= 14'sb00001011101110) begin //check if input threshold is reached or not. give input in signed two's complement. current value ~3V -Lukas            
+	  counter_d1 <= 14'h0 ;        //counter1 should be 0 during hold
+      counter_d2 <= counter_d2 + 14'h1 ;
+	  if (counter_d2 < set_delay2_i) begin
+         error <= $signed(set_sp_i) - $signed(dat_i) ;
+      end
+      else if (counter_d2 == 14'b11111111111110) begin
+	     counter_d2 <= set_delay2_i ;
+	     error <= 15'h0 ;
+	  end
+	  else begin
+	     error <= 15'h0 ;
+	  end	  
    end
    else begin
-      counter <= counter + 1 ;
-	  if (counter <= 8'b00111110) begin
+      counter_d2 <= 14'h0 ;      //counter2 should be 0 during sample
+      counter_d1 <= counter_d1 + 14'h1 ;
+	  if (counter_d1 < set_delay1_i) begin
          error <= 15'h0 ;
       end
-      else if (counter == 8'b11111110) begin
-	     counter <= 8'b00111111 ;
+      else if (counter_d1 == 14'b11111111111110) begin
+	     counter_d1 <= set_delay1_i ;
 	     error <= $signed(set_sp_i) - $signed(dat_i) ;
 	  end
 	  else begin

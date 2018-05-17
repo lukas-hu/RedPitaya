@@ -1,3 +1,10 @@
+/** 
+ * Lukas - 16.05.18 - MODULE NOT IN USE IN FINAL FPGA IMAGE - Modified version of red_pitaya_pid.v
+ * First attempt at modifying the PID image. Disabled the first input (CHA) and the respective controllers by putting comments in the original code.
+ */
+ 
+ 
+ 
 /**
  * $Id: red_pitaya_pid.v 961 2014-01-21 11:40:39Z matej.oblak $
  *

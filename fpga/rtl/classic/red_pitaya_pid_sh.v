@@ -1,3 +1,10 @@
+/** 
+ * Lukas - 16.05.18 - Modified version of red_pitaya_pid.v
+ * Calls the Sample&Hold + delay PID Block on PID12 (Output1, Input2). Used input 1 to trigger the controller with a TTL signal. 
+ * Used two parameters of PID21 for the delay values. The remaining parameters are currently unused. 
+ */
+ 
+
 /**
  * $Id: red_pitaya_pid.v 961 2014-01-21 11:40:39Z matej.oblak $
  *
@@ -49,7 +56,7 @@
 
 
 
-module red_pitaya_pid_sh (                  //changed name LUKAS
+module red_pitaya_pid_sh (                  //changed name -Lukas
    // signals
    input                 clk_i           ,  //!< processing clock
    input                 rstn_i          ,  //!< processing reset - active low
@@ -74,14 +81,14 @@ localparam  DSR = 10         ;
 
 //---------------------------------------------------------------------------------
 //  PID 11
-/*
+
 wire [ 14-1: 0] pid_11_out   ;
 reg  [ 14-1: 0] set_11_sp    ;
 reg  [ 14-1: 0] set_11_kp    ;
 reg  [ 14-1: 0] set_11_ki    ;
 reg  [ 14-1: 0] set_11_kd    ;
 reg             set_11_irst  ;
-
+/*
 red_pitaya_pid_block #(
   .PSR (  PSR   ),
   .ISR (  ISR   ),
@@ -100,7 +107,7 @@ red_pitaya_pid_block #(
   .set_kd_i     (  set_11_kd      ),  // Kd
   .int_rst_i    (  set_11_irst    )   // integrator reset
 );
-
+*/
 //---------------------------------------------------------------------------------
 //  PID 21
 
@@ -129,7 +136,7 @@ red_pitaya_pid_block #(
   .set_kd_i     (  set_21_kd      ),  // Kd
   .int_rst_i    (  set_21_irst    )   // integrator reset
 );
-*/
+
 //---------------------------------------------------------------------------------
 //  PID 12
 
@@ -140,7 +147,7 @@ reg  [ 14-1: 0] set_12_ki    ;
 reg  [ 14-1: 0] set_12_kd    ;
 reg             set_12_irst  ;
 
-red_pitaya_pid_block_sh #(
+red_pitaya_pid_block_sh_d #(
   .PSR (  PSR   ),
   .ISR (  ISR   ),
   .DSR (  DSR   )      
@@ -150,14 +157,16 @@ red_pitaya_pid_block_sh #(
   .rstn_i       (  rstn_i         ),  // reset - active low
   .dat_i        (  dat_b_i        ),  // input data
   .dat_o        (  pid_12_out     ),  // output data
-  .dat_i_sh     (  dat_a_i        ),  // input s&h trigger LUKAS
+  .dat_i_sh     (  dat_a_i        ),  // input s&h trigger -Lukas
 
    // settings
   .set_sp_i     (  set_12_sp      ),  // set point
   .set_kp_i     (  set_12_kp      ),  // Kp
   .set_ki_i     (  set_12_ki      ),  // Ki
   .set_kd_i     (  set_12_kd      ),  // Kd
-  .int_rst_i    (  set_12_irst    )   // integrator reset
+  .int_rst_i    (  set_12_irst    ),  // integrator reset
+  .set_delay1_i (  set_21_kd      ),  // use Kd from PID11 for delay1 -Lukas
+  .set_delay2_i (  set_21_ki      )   // use KI from PID21 for delay2 -Lukas
 );
 
 //---------------------------------------------------------------------------------
@@ -170,7 +179,7 @@ reg  [ 14-1: 0] set_22_ki    ;
 reg  [ 14-1: 0] set_22_kd    ;
 reg             set_22_irst  ;
 
-red_pitaya_pid_block_sh #(
+red_pitaya_pid_block_sh_d #(
   .PSR (  PSR   ),
   .ISR (  ISR   ),
   .DSR (  DSR   )      
@@ -180,7 +189,7 @@ red_pitaya_pid_block_sh #(
   .rstn_i       (  rstn_i         ),  // reset - active low
   .dat_i        (  dat_b_i        ),  // input data
   .dat_o        (  pid_22_out     ),  // output data
-  .dat_i_sh     (  dat_a_i        ),  // input s&h trigger LUKAS
+  .dat_i_sh     (  dat_a_i        ),  // input s&h trigger -Lukas
 
    // settings
   .set_sp_i     (  set_22_sp      ),  // set point
@@ -232,21 +241,21 @@ assign dat_b_o = out_2_sat ;
 
 always @(posedge clk_i) begin
    if (rstn_i == 1'b0) begin
-/*      set_11_sp    <= 14'd0 ;
+      set_11_sp    <= 14'd0 ;
       set_11_kp    <= 14'd0 ;
       set_11_ki    <= 14'd0 ;
       set_11_kd    <= 14'd0 ;
-      set_11_irst  <=  1'b1 ;*/
+      set_11_irst  <=  1'b1 ;
       set_12_sp    <= 14'd0 ;
       set_12_kp    <= 14'd0 ;
       set_12_ki    <= 14'd0 ;
       set_12_kd    <= 14'd0 ;
       set_12_irst  <=  1'b1 ;
-/*      set_21_sp    <= 14'd0 ;
+      set_21_sp    <= 14'd0 ;
       set_21_kp    <= 14'd0 ;
       set_21_ki    <= 14'd0 ;
       set_21_kd    <= 14'd0 ;
-      set_21_irst  <=  1'b1 ;*/
+      set_21_irst  <=  1'b1 ;
       set_22_sp    <= 14'd0 ;
       set_22_kp    <= 14'd0 ;
       set_22_ki    <= 14'd0 ;
@@ -256,20 +265,20 @@ always @(posedge clk_i) begin
    end
    else begin
       if (sys_wen) begin
-         if (sys_addr[19:0]==16'h0)    {set_22_irst,/*set_21_irst,*/set_12_irst/*,set_11_irst*/} <= sys_wdata[ 4-1:0] ;
+         if (sys_addr[19:0]==16'h0)    {set_22_irst,set_21_irst,set_12_irst,set_11_irst} <= sys_wdata[ 4-1:0] ;
 
-         /*if (sys_addr[19:0]==16'h10)    set_11_sp  <= sys_wdata[14-1:0] ;
+         if (sys_addr[19:0]==16'h10)    set_11_sp  <= sys_wdata[14-1:0] ;
          if (sys_addr[19:0]==16'h14)    set_11_kp  <= sys_wdata[14-1:0] ;
          if (sys_addr[19:0]==16'h18)    set_11_ki  <= sys_wdata[14-1:0] ;
-         if (sys_addr[19:0]==16'h1C)    set_11_kd  <= sys_wdata[14-1:0] ;*/
+         if (sys_addr[19:0]==16'h1C)    set_11_kd  <= sys_wdata[14-1:0] ;
          if (sys_addr[19:0]==16'h20)    set_12_sp  <= sys_wdata[14-1:0] ;
          if (sys_addr[19:0]==16'h24)    set_12_kp  <= sys_wdata[14-1:0] ;
          if (sys_addr[19:0]==16'h28)    set_12_ki  <= sys_wdata[14-1:0] ;
          if (sys_addr[19:0]==16'h2C)    set_12_kd  <= sys_wdata[14-1:0] ;
-         /*if (sys_addr[19:0]==16'h30)    set_21_sp  <= sys_wdata[14-1:0] ;
+         if (sys_addr[19:0]==16'h30)    set_21_sp  <= sys_wdata[14-1:0] ;
          if (sys_addr[19:0]==16'h34)    set_21_kp  <= sys_wdata[14-1:0] ;
          if (sys_addr[19:0]==16'h38)    set_21_ki  <= sys_wdata[14-1:0] ;
-         if (sys_addr[19:0]==16'h3C)    set_21_kd  <= sys_wdata[14-1:0] ;*/
+         if (sys_addr[19:0]==16'h3C)    set_21_kd  <= sys_wdata[14-1:0] ;
          if (sys_addr[19:0]==16'h40)    set_22_sp  <= sys_wdata[14-1:0] ;
          if (sys_addr[19:0]==16'h44)    set_22_kp  <= sys_wdata[14-1:0] ;
          if (sys_addr[19:0]==16'h48)    set_22_ki  <= sys_wdata[14-1:0] ;
@@ -289,22 +298,22 @@ end else begin
    sys_err <= 1'b0 ;
 
    casez (sys_addr[19:0])
-      20'h00 : begin sys_ack <= sys_en;          sys_rdata <= {{32- 4{1'b0}}, set_22_irst,/*set_21_irst,*/set_12_irst/*,set_11_irst*/}       ; end 
+      20'h00 : begin sys_ack <= sys_en;          sys_rdata <= {{32- 4{1'b0}}, set_22_irst,set_21_irst,set_12_irst,set_11_irst}       ; end 
 
-      /*20'h10 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_11_sp}          ; end 
+      20'h10 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_11_sp}          ; end 
       20'h14 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_11_kp}          ; end 
-      20'h18 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_11_ki}          ; end 
-      20'h1C : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_11_kd}          ; end*/ 
+      20'h18 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_11_ki}          ; end
+      20'h1C : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_11_kd}          ; end 
 
       20'h20 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_12_sp}          ; end 
       20'h24 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_12_kp}          ; end 
       20'h28 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_12_ki}          ; end 
       20'h2C : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_12_kd}          ; end 
 
-      /*20'h30 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_21_sp}          ; end 
+      20'h30 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_21_sp}          ; end 
       20'h34 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_21_kp}          ; end 
       20'h38 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_21_ki}          ; end 
-      20'h3C : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_21_kd}          ; end*/ 
+      20'h3C : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_21_kd}          ; end
 
       20'h40 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_22_sp}          ; end 
       20'h44 : begin sys_ack <= sys_en;          sys_rdata <= {{32-14{1'b0}}, set_22_kp}          ; end 

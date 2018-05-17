@@ -1,3 +1,8 @@
+/**
+ * Lukas - 16.05.18
+ * Calls the new sample&hold pid module at the end of the code
+ */
+
 ////////////////////////////////////////////////////////////////////////////////
 // Red Pitaya TOP module. It connects external pins and PS part with
 // other application modules.
@@ -498,7 +503,7 @@ red_pitaya_asg i_asg (
 //  MIMO PID controller
 ////////////////////////////////////////////////////////////////////////////////
 
-red_pitaya_pid_sh i_pid (         //changed name LUKAS
+red_pitaya_pid_sh i_pid (         //called modified pid module -Lukas
    // signals
   .clk_i           (adc_clk   ),  // clock
   .rstn_i          (adc_rstn  ),  // reset - active low

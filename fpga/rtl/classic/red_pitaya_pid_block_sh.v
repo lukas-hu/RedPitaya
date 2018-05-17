@@ -1,3 +1,8 @@
+/** 
+ * Lukas - 16.05.18 - MODULE NOT IN USE IN FINAL FPGA IMAGE - Modified version of red_pitaya_pid_block.v
+ * Included a Sample&Hold function that is triggered by a TTL signal on input 1. If the input is above a certain threshold, the error signal of the controller is set to 0. 
+ */
+
 /**
  * $Id: red_pitaya_pid_block.v 961 2014-01-21 11:40:39Z matej.oblak $
  *
@@ -46,7 +51,7 @@
 
 
 
-module red_pitaya_pid_block_sh #(          //changed name LUKAS
+module red_pitaya_pid_block_sh #(          //changed name -Lukas
    parameter     PSR = 12         ,
    parameter     ISR = 18         ,
    parameter     DSR = 10          
@@ -57,7 +62,7 @@ module red_pitaya_pid_block_sh #(          //changed name LUKAS
    input                 rstn_i          ,  // reset - active low
    input      [ 14-1: 0] dat_i           ,  // input data
    output     [ 14-1: 0] dat_o           ,  // output data
-   input	  [ 14-1: 0] dat_i_sh		 ,  // input sample&hold trigger LUKAS
+   input	  [ 14-1: 0] dat_i_sh		 ,  // input sample&hold trigger -Lukas
 
    // settings
    input      [ 14-1: 0] set_sp_i        ,  // set point
@@ -66,11 +71,6 @@ module red_pitaya_pid_block_sh #(          //changed name LUKAS
    input      [ 14-1: 0] set_kd_i        ,  // Kd
    input                 int_rst_i          // integrator reset
 );
-
-
-//set register for sh trigger input LUKAS
-//reg  [ 14-1: 0] shtrig		 ;
-//assign shtrig = dat_i_sh     ;
 
 
 //---------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ always @(posedge clk_i) begin
    if (rstn_i == 1'b0) begin
       error <= 15'h0 ;
    end
-   else if ($signed(dat_i_sh) >= 14'sb00001011101110) begin //check if input threshold is reached or not LUKAS
+   else if ($signed(dat_i_sh) >= 14'sb00001011101110) begin //check if input threshold is reached or not. give input in signed two's complement. current value ~3V -Lukas
 	  error <= 15'h0 ;
    end
    else begin
