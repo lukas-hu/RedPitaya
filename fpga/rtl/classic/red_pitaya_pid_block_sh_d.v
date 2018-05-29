@@ -76,57 +76,59 @@ module red_pitaya_pid_block_sh_d #(          //changed name -Lukas
 );
 
 
-//set register for sh trigger input -Lukas
-//reg  [ 14-1: 0] shtrig		 ;
-//assign shtrig = dat_i_sh     ;
-
-
 //---------------------------------------------------------------------------------
 //  Set point error calculation
 //
 //  Sample&Hold feature including delays (-Lukas):
-//             __________                   _________________
+//  Works as follows: TTL signal on input 1 is checked each clock cycle. If this signal is on high, error is set to 0 which will keep the integrator of the PID running. (hold)
+//  If the TTL signal is low, the error is computed in the usual way (sample).
+//  Both delays are simple counters that delay the setting of the error signal to 0 or =!0
+//  
+//  Diagram:   ------------------------------------------------>Time
+//             __________                   ___________________
 //  TTL signal:          |_________________|
 //
 //                               ~~~~~~~~~~~~~~~~~~~~
 //  error signal:_______________|                    |__________
 //  
-//  delays:              <--d1->            <---d2-->     
+//  delays:              <--d1->            <---d2-->   
+//  counter1: 0000000000123.....T....MT.....0000000000000000000   T:Threshold, M:Maximum 
+//  counter2: ..MT.......0000000000000000000123......T.........  
 
 
 reg  [ 15-1: 0] error        ;
 reg  [ 14-1: 0] counter_d1 = 14'h0  ;     //counter delay 1 -Lukas
 reg  [ 14-1: 0] counter_d2 = 14'h0  ;     //counter delay 2 -Lukas
 
-always @(posedge clk_i) begin
+always @(posedge clk_i) begin									//code below is executed each clock cycle -Lukas
    if (rstn_i == 1'b0) begin
       error <= 15'h0 ;
    end
-   else if ($signed(dat_i_sh) >= 14'sb00001011101110) begin //check if input threshold is reached or not. give input in signed two's complement. current value ~3V -Lukas            
-	  counter_d1 <= 14'h0 ;        //counter1 should be 0 during hold
-      counter_d2 <= counter_d2 + 14'h1 ;
-	  if (counter_d2 < set_delay2_i) begin
+   else if ($signed(dat_i_sh) >= 14'sb00001011101110) begin 	//check if input threshold is reached or not. give input in signed two's complement. current value ~3V -Lukas            
+	  counter_d1 <= 14'h0 ;        								//counter1 should be 0 while TTL signal is high -Lukas
+      counter_d2 <= counter_d2 + 14'h1 ; 						//counter2 counts if TTL signal is high -Lukas
+	  if (counter_d2 < set_delay2_i) begin						//if counter2 is lower than given delay, keep sampling (error=!0) -Lukas
          error <= $signed(set_sp_i) - $signed(dat_i) ;
       end
-      else if (counter_d2 == 14'b11111111111110) begin
+      else if (counter_d2 == 14'b11111111111110) begin			//if counter2 is at maximum, reset it to threshold and keep on hold (error=0) -Lukas
 	     counter_d2 <= set_delay2_i ;
 	     error <= 15'h0 ;
 	  end
-	  else begin
+	  else begin												//if counter2 is above threshold, keep controller on hold (error=0) -Lukas
 	     error <= 15'h0 ;
 	  end	  
    end
    else begin
-      counter_d2 <= 14'h0 ;      //counter2 should be 0 during sample
-      counter_d1 <= counter_d1 + 14'h1 ;
-	  if (counter_d1 < set_delay1_i) begin
+      counter_d2 <= 14'h0 ;      								//counter2 should be 0 while TTL signal is low -Lukas
+      counter_d1 <= counter_d1 + 14'h1 ;						//counter1 counts if TTL signal is low -Lukas
+	  if (counter_d1 < set_delay1_i) begin						//if counter1 is lower than given delay, keep on hold (error=0) -Lukas
          error <= 15'h0 ;
       end
-      else if (counter_d1 == 14'b11111111111110) begin
+      else if (counter_d1 == 14'b11111111111110) begin			//if counter1 is at maximum, reset it to threshold and keep sampling (error=!0) -Lukas
 	     counter_d1 <= set_delay1_i ;
 	     error <= $signed(set_sp_i) - $signed(dat_i) ;
 	  end
-	  else begin
+	  else begin												//if counter1 is above threshold, keep controller on sample (error=!0) -Lukas
 	     error <= $signed(set_sp_i) - $signed(dat_i) ;
 	  end
    end

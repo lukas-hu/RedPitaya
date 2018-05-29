@@ -1,7 +1,7 @@
 /** 
  * Lukas - 16.05.18 - Modified version of red_pitaya_pid.v
- * Calls the Sample&Hold + delay PID Block on PID12 (Output1, Input2). Used input 1 to trigger the controller with a TTL signal. 
- * Used two parameters of PID21 for the delay values. The remaining parameters are currently unused. 
+ * Calls the Sample&Hold + delay PID Block on PID12 (Output1, Input2). Uses input 1 to trigger the controller with a TTL signal. 
+ * Uses two parameters of PID21 for the delay values. The remaining parameters are currently unused. 
  */
  
 
@@ -22,35 +22,35 @@
 
 
 /**
- * GENERAL DESCRIPTION:
+ * GENERAL DESCRIPTION - MODIFIED -Lukas 
  *
- * Multiple input multiple output controller.
+ * Single input multiple output controller.
  *
  *
- *                 /-------\       /-----------\
- *   CHA -----+--> | PID11 | ------| SUM & SAT | ---> CHA
- *            |    \-------/       \-----------/
- *            |                            ^
- *            |    /-------\               |
- *            ---> | PID21 | ----------    |
- *                 \-------/           |   |
- *                                     |   |
- *  INPUT                              |   |         OUTPUT
- *                                     |   |
- *                 /-------\           |   |
- *            ---> | PID12 | --------------
- *            |    \-------/           |    
- *            |                        ˇ
+ *                                 /-----------\
+ *   CHA --                        | SUM & SAT | ---> CHA
+ *         |                       \-----------/
+ *         |                               ^
+ *   /-----------\                         |
+ *   |sample&hold|                         |
+ *   \-----------/                         |
+ *         |                               |
+ *  INPUT  |                               |         OUTPUT
+ *         |-----------v                   |
+ *         |       /-------\               |
+ *         |  ---> | PID12 | --------------
+ *         |  |    \-------/               
+ *         ---|--------v                        ˇ
  *            |    /-------\       /-----------\
  *   CHB -----+--> | PID22 | ------| SUM & SAT | ---> CHB
  *                 \-------/       \-----------/
  *
  *
- * MIMO controller is build from four equal submodules, each can have 
+ * SIMO controller is build from two equal submodules, each can have 
  * different settings.
  *
- * Each output is sum of two controllers with different input. That sum is also
- * saturated to protect from wrapping.
+ * Each output used to be the sum of two controllers with different input. That sum was also
+ * saturated to protect from wrapping. This feature is now not used anymore.
  * 
  */
 
@@ -81,6 +81,7 @@ localparam  DSR = 10         ;
 
 //---------------------------------------------------------------------------------
 //  PID 11
+//  UNUSED - Keep only the parameters for further use -Lukas
 
 wire [ 14-1: 0] pid_11_out   ;
 reg  [ 14-1: 0] set_11_sp    ;
@@ -110,14 +111,15 @@ red_pitaya_pid_block #(
 */
 //---------------------------------------------------------------------------------
 //  PID 21
+//  UNUSED - Keep only the parameters for further use -Lukas
 
 wire [ 14-1: 0] pid_21_out   ;
 reg  [ 14-1: 0] set_21_sp    ;
 reg  [ 14-1: 0] set_21_kp    ;
-reg  [ 14-1: 0] set_21_ki    ;
-reg  [ 14-1: 0] set_21_kd    ;
+reg  [ 14-1: 0] set_21_ki    ;       // used to set delay2 of PID12
+reg  [ 14-1: 0] set_21_kd    ;       // used to set delay1 of PID12
 reg             set_21_irst  ;
-
+/*
 red_pitaya_pid_block #(
   .PSR (  PSR   ),
   .ISR (  ISR   ),
@@ -136,10 +138,10 @@ red_pitaya_pid_block #(
   .set_kd_i     (  set_21_kd      ),  // Kd
   .int_rst_i    (  set_21_irst    )   // integrator reset
 );
-
+*/
 //---------------------------------------------------------------------------------
 //  PID 12
-
+//  Main module that is used with the server. Calls the PID module with sample&hold and adjustable delays -Lukas
 wire [ 14-1: 0] pid_12_out   ;
 reg  [ 14-1: 0] set_12_sp    ;
 reg  [ 14-1: 0] set_12_kp    ;
@@ -171,7 +173,7 @@ red_pitaya_pid_block_sh_d #(
 
 //---------------------------------------------------------------------------------
 //  PID 22
-
+//  Can be used, so far only sample&hold without delay -Lukas
 wire [ 14-1: 0] pid_22_out   ;
 reg  [ 14-1: 0] set_22_sp    ;
 reg  [ 14-1: 0] set_22_kp    ;
@@ -179,7 +181,7 @@ reg  [ 14-1: 0] set_22_ki    ;
 reg  [ 14-1: 0] set_22_kd    ;
 reg             set_22_irst  ;
 
-red_pitaya_pid_block_sh_d #(
+red_pitaya_pid_block_sh #(
   .PSR (  PSR   ),
   .ISR (  ISR   ),
   .DSR (  DSR   )      
@@ -207,8 +209,8 @@ reg  [ 14-1: 0] out_1_sat   ;
 wire [ 15-1: 0] out_2_sum   ;
 reg  [ 14-1: 0] out_2_sat   ;
 
-assign out_1_sum = /*$signed(pid_11_out) +*/ $signed(pid_12_out);
-assign out_2_sum = $signed(pid_22_out)/* + $signed(pid_21_out)*/;
+assign out_1_sum = /*$signed(pid_11_out) +*/ $signed(pid_12_out);		// input 1 is disabled -Lukas
+assign out_2_sum = $signed(pid_22_out)/* + $signed(pid_21_out)*/;		// input 1 is disabled -Lukas
 
 always @(posedge clk_i) begin
    if (rstn_i == 1'b0) begin
