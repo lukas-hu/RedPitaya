@@ -1,6 +1,7 @@
 /**
  * Lukas - 16.05.18
  * Calls the new sample&hold pid module at the end of the code
+ * TODO: Define new outputs for the generator
  */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,13 +292,16 @@ sys_bus_interconnect #(
   .bus_s (sys)
 );
 
-// silence unused busses
+// silence unused busses - enabled bus 6 -Lukas
+sys_bus_stub sys_bus_stub_5 (sys[5]);
+sys_bus_stub sys_bus_stub_7 (sys[7]);
+/*
 generate
 for (genvar i=5; i<8; i++) begin: for_sys
   sys_bus_stub sys_bus_stub_5_7 (sys[i]);
 end: for_sys
 endgenerate
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 // Analog mixed signals (PDM analog outputs)
 ////////////////////////////////////////////////////////////////////////////////
@@ -443,7 +447,7 @@ assign gpio.i[23:16] = exp_n_in;
 ////////////////////////////////////////////////////////////////////////////////
 // oscilloscope
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 logic trig_asg_out;
 
 red_pitaya_scope i_scope (
@@ -474,11 +478,11 @@ red_pitaya_scope i_scope (
   .sys_err       (sys[1].err  ),
   .sys_ack       (sys[1].ack  )
 );
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 //  DAC arbitrary signal generator
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 
 red_pitaya_asg i_asg (
    // DAC
@@ -498,11 +502,11 @@ red_pitaya_asg i_asg (
   .sys_err         (sys[2].err  ),
   .sys_ack         (sys[2].ack  )
 );
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 //  MIMO PID controller
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 red_pitaya_pid_sh i_pid (         //called modified pid module -Lukas
    // signals
   .clk_i           (adc_clk   ),  // clock
@@ -520,5 +524,27 @@ red_pitaya_pid_sh i_pid (         //called modified pid module -Lukas
   .sys_err         (sys[3].err  ),
   .sys_ack         (sys[3].ack  )
 );
+*/
+////////////////////////////////////////////////////////////////////////////////
+//  Pulse generator
+////////////////////////////////////////////////////////////////////////////////
 
+pulse_generator_lp i_pgen ( 		  // call new pulse generator module -Lukas
+   // signals
+  .clk_i           (adc_clk   ),  // clock
+  .rstn_i          (adc_rstn  ),  // reset - active low
+  .dat_a_i         (adc_dat[0]),  // in 1
+  .dat_b_i         (adc_dat[1]),  // in 2
+  .dat_a_o         (asg_dat[0]),  // out 1 - use the ASG outputs to avoid interferences with the PID output. Saturation is already taken care of above -Lukas
+  .dat_b_o         (asg_dat[1]),  // out 2
+  // System bus
+  .sys_addr        (sys[6].addr ),
+  .sys_wdata       (sys[6].wdata),
+  .sys_wen         (sys[6].wen  ),
+  .sys_ren         (sys[6].ren  ),
+  .sys_rdata       (sys[6].rdata),
+  .sys_err         (sys[6].err  ),
+  .sys_ack         (sys[6].ack  )
+ );
+  
 endmodule: red_pitaya_top
